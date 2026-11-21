@@ -1,0 +1,250 @@
+---
+title: "Practical 24"
+author: "Shivam Kumar"
+date: '25026765012'
+output: html_document
+---
+
+# Aim
+
+To analyze a Randomized Block Design (RBD) with one missing observation using the missing-plot technique and examine the treatment and block effects.
+
+# Problem
+
+The observation under the second treatment in the third block is missing. The given data are:
+
+| **Treatments** | **1** | **2** | **3** | **4** | **5** |
+|-----|-----|-----|-----|-----|-----|
+| I   | 116 | 118 | 97  | 101 | 115 |
+| II  | 171 | 131 | $-$ | 107 | 129 |
+| III | 138 | 131 | 115 | 93  | 110 |
+| IV  | 144 | 141 | 115 | 93  | 99  |
+
+Estimate the missing observation, calculate the bias involved in the analysis, and perform the analysis of variance using the missing-plot technique.
+
+# Theory
+
+In a Randomized Block Design, each treatment is observed once in every homogeneous block. The RBD model is
+
+$$Y_{ij}=\mu+\tau_{i}+\beta_{j}+\epsilon_{ij},$$
+
+where $\mu$ is the overall mean, $\tau_{i}$ is the effect of the $i$th treatment, $\beta_{j}$ is the effect of the $j$th block, and $\epsilon_{ij}$ is the random error.
+
+For one missing observation, its estimate is
+
+$$\hat{x}=\frac{rB'+tT'-G'}{(r-1)(t-1)},$$
+
+where $t$ and $r$ are the numbers of treatments and blocks, and $T'$, $B'$ and $G'$ are respectively the treatment total, block total and grand total excluding the missing value.
+
+The hypotheses for treatment effects are $H_{0}:\mu_{1}=\mu_{2}=\mu_{3}=\mu_{4}$ against $H_{1}:$ at least two treatment means differ. The test statistic is
+
+$$F=\frac{MS_{\text{Treatment}}}{MSE}.$$
+
+Since the missing value is estimated by minimizing the error sum of squares, one degree of freedom is lost from error. Hence, the error degrees of freedom are $(t-1)(r-1)-1$.
+
+Because the missing value is estimated from the data, the treatment sum of squares obtained from the completed data is overestimated. The amount of this bias is
+
+$$\text{Bias}=\frac{\left[B'-(t-1)\hat{x}\right]^{2}}{t(t-1)},$$
+
+where $B'$ is the total of the block containing the missing value, excluding $\hat{x}$. The corrected treatment sum of squares is the treatment SS from the completed data minus this bias.
+
+# Code and Calculations
+
+## Step 1: Enter the data
+
+```{r enter-data}
+# Randomised Block Design with One Missing Observation
+
+# Step 1: Enter the data
+data <- matrix(c(
+  116, 118, 97, 101, 115,
+  171, 131, NA, 107, 129,
+  138, 131, 115, 93, 110,
+  144, 141, 115, 93, 99
+), nrow = 4, byrow = TRUE)
+
+rownames(data) <- c("I", "II", "III", "IV")
+colnames(data) <- paste("Block", 1:5)
+
+cat("Original Data:\n")
+print(data)
+```
+
+## Step 2: Estimate the missing observation
+
+```{r estimate-missing}
+# Step 2: Calculate the missing observation
+
+t <- nrow(data)  # Number of treatments
+r <- ncol(data)  # Number of blocks
+
+# Missing observation is in Treatment II, Block 3
+
+T <- sum(data[2, ], na.rm = TRUE)
+B <- sum(data[, 3], na.rm = TRUE)
+G <- sum(data, na.rm = TRUE)
+
+x <- (r * B + t * T - G) / ((r - 1) * (t - 1))
+
+cat("\nEstimated Missing Observation =", x, "\n")
+```
+
+## Step 3: Completed data and totals
+
+```{r completed-data-totals}
+# Step 3: Replace missing observation
+data[2, 3] <- x
+
+cat("\nCompleted Data:\n")
+print(data)
+
+# Step 4: Calculate totals
+treatment_totals <- rowSums(data)
+block_totals <- colSums(data)
+grand_total <- sum(data)
+
+cat("\nTreatment Totals:\n")
+print(treatment_totals)
+
+cat("\nBlock Totals:\n")
+print(block_totals)
+
+cat("\nGrand Total =", grand_total, "\n")
+```
+
+## Steps 5 to 11: Sums of squares and ANOVA table
+
+```{r anova-calculations}
+# Step 5: Correction Factor
+N <- t * r
+CF <- grand_total^2 / N
+
+# Step 6: Calculate Sum of Squares
+SS_Total <- sum(data^2) - CF
+
+SS_Treatment <- sum(treatment_totals^2) / r - CF
+
+SS_Block <- sum(block_totals^2) / t - CF
+
+SS_Error <- SS_Total - SS_Treatment - SS_Block
+
+# Step 7: Degrees of Freedom
+df_Treatment <- t - 1
+df_Block <- r - 1
+df_Error <- (t - 1) * (r - 1) - 1
+df_Total <- t * r - 2
+
+# Step 8: Mean Squares
+MS_Treatment <- SS_Treatment / df_Treatment
+MS_Block <- SS_Block / df_Block
+MS_Error <- SS_Error / df_Error
+
+# Step 9: F Ratios
+F_Treatment <- MS_Treatment / MS_Error
+F_Block <- MS_Block / MS_Error
+
+# Step 10: P-values
+p_Treatment <- pf(F_Treatment, df_Treatment,
+                  df_Error, lower.tail = FALSE)
+
+p_Block <- pf(F_Block, df_Block,
+              df_Error, lower.tail = FALSE)
+
+# Step 11: ANOVA Table
+ANOVA <- data.frame(
+  Source = c("Treatments", "Blocks", "Error", "Total"),
+  DF = c(df_Treatment, df_Block, df_Error, df_Total),
+  SS = c(SS_Treatment, SS_Block, SS_Error, SS_Total),
+  MS = c(MS_Treatment, MS_Block, MS_Error, NA),
+  F = c(F_Treatment, F_Block, NA, NA),
+  P_value = c(p_Treatment, p_Block, NA, NA)
+)
+
+cat("\nANOVA TABLE:\n")
+print(ANOVA, digits = 5, row.names = FALSE)
+```
+
+## Step 12: Test at 5% significance level
+
+```{r significance-test}
+# Step 12: Test at 5% significance level
+F_critical_T <- qf(0.95, df_Treatment, df_Error)
+F_critical_B <- qf(0.95, df_Block, df_Error)
+
+cat("\nTreatment F-critical =", F_critical_T)
+
+cat("\nBlock F-critical =", F_critical_B)
+
+cat("\n\nTreatment Effect:",
+    ifelse(F_Treatment > F_critical_T,
+           "Significant", "Not Significant"))
+
+cat("\nBlock Effect:",
+    ifelse(F_Block > F_critical_B,
+           "Significant", "Not Significant"))
+```
+
+## Bias and Corrected Treatment Effect
+
+The code below was added so that the bias and the corrected ANOVA quoted in the Results are also produced by R. It uses $B'$ (the total of the block containing the missing value, excluding $\hat{x}$), which is the value stored in `B` in Step 2.
+
+```{r bias-correction}
+# Bias due to the estimated missing value
+Bias <- (B - (t - 1) * x)^2 / (t * (t - 1))
+cat("Bias =", Bias, "\n")
+
+# Corrected treatment sum of squares and F test
+SS_Treatment_corrected <- SS_Treatment - Bias
+MS_Treatment_corrected <- SS_Treatment_corrected / df_Treatment
+F_Treatment_corrected <- MS_Treatment_corrected / MS_Error
+p_Treatment_corrected <- pf(F_Treatment_corrected, df_Treatment,
+                            df_Error, lower.tail = FALSE)
+
+ANOVA_corrected <- data.frame(
+  Source = c("Treatments (corrected)", "Blocks", "Error", "Total"),
+  DF = c(df_Treatment, df_Block, df_Error, df_Total),
+  SS = c(SS_Treatment_corrected, SS_Block, SS_Error, SS_Total),
+  MS = c(MS_Treatment_corrected, MS_Block, MS_Error, NA),
+  F = c(F_Treatment_corrected, F_Block, NA, NA),
+  P_value = c(p_Treatment_corrected, p_Block, NA, NA)
+)
+
+cat("\nCORRECTED ANOVA TABLE:\n")
+print(ANOVA_corrected, digits = 5, row.names = FALSE)
+
+cat("\nCorrected Treatment Effect:",
+    ifelse(F_Treatment_corrected > F_critical_T,
+           "Significant", "Not Significant"), "\n")
+```
+
+# Results and Conclusion
+
+The estimated missing observation is $\hat{x}=126.9167$.
+
+The ANOVA table obtained from the completed data (as produced by the R code) is
+
+| **Source** | **df** | **SS** | **MS** | **F** | **p-value** |
+|------------|----|--------|---------|--------|---------|
+| Treatments | 3  | 1447.1 | 482.37  | 3.7449 | 0.04479 |
+| Blocks     | 4  | 4597.7 | 1149.43 | 8.9235 | 0.00183 |
+| Error      | 11 | 1416.9 | 128.81  |        |         |
+| Total      | 18 | 7461.7 |         |        |         |
+
+**Bias.** For the block containing the missing value, $B'=97+115+115=327$, with $t=4$:
+
+$$\text{Bias}=\frac{\left[327-3(126.9167)\right]^{2}}{4\times3}=\frac{(-53.75)^{2}}{12}=240.76.$$
+
+**Corrected ANOVA.** The treatment SS is reduced by the bias, $1447.1-240.76=1206.35$. The block and error sums of squares are unchanged.
+
+| **Source** | **df** | **SS** | **MS** | **F** | **p-value** |
+|------------------------|----|---------|---------|--------|---------|
+| Treatments (corrected) | 3  | 1206.35 | 402.12  | 3.122  | 0.0701  |
+| Blocks                 | 4  | 4597.7  | 1149.43 | 8.9235 | 0.00183 |
+| Error                  | 11 | 1416.9  | 128.81  |        |         |
+| Total                  | 18 | 7461.7  |         |        |         |
+
+For the block effect, $p=0.00183<0.05$, so the block effect is significant at the 5% level.
+
+For treatment effects, the uncorrected test gives $p=0.04479$, but this uses the biased treatment SS. With the bias removed, $F=3.122<F_{0.05;\,3,11}=3.587$ ($p=0.0701>0.05$), so the null hypothesis is not rejected at the 5% level: there is not enough evidence of a difference among the treatment means.
+
+Hence the block effect is significant, while the treatment effect is not significant once the bias from the estimated missing value is accounted for.

@@ -1,0 +1,109 @@
+---
+title: "Practical 27"
+author: "Shivam Kumar"
+date: '25026765012'
+output: html_document
+---
+
+# Aim
+
+To analyse a $2^{2}$ factorial experiment conducted in a Completely Randomized Design (CRD) and examine the effects of factors A, B and their interaction on yield.
+
+# Problem
+
+The following data give the yields from a $2^{2}$ factorial experiment conducted in a Completely Randomized Design. Each treatment combination has three replications.
+
+| **Treatment combination** | **Replication 1** | **Replication 2** | **Replication 3** |
+|-----|----|----|----|
+| (1) | 20 | 17 | 19 |
+| a   | 28 | 24 | 24 |
+| b   | 10 | 11 | 15 |
+| ab  | 23 | 22 | 21 |
+
+Analyse the design and give your comment.
+
+# Theory
+
+A $2^{2}$ factorial experiment consists of two factors, A and B, each considered at two levels. The four treatment combinations are (1), a, b and ab, where (1) denotes both factors at their lower levels, a denotes A at the higher level, b denotes B at the higher level, and ab denotes both factors at their higher levels.
+
+The factorial model in CRD is
+
+$$Y_{ijk}=\mu+\alpha_{i}+\beta_{j}+(\alpha\beta)_{ij}+\epsilon_{ijk},$$
+
+where $\mu$ is the general mean, $\alpha_{i}$ and $\beta_{j}$ are the main effects of factors A and B, $(\alpha\beta)_{ij}$ is their interaction effect, and $\epsilon_{ijk}$ is the random error.
+
+The hypotheses are that factor A has no effect, factor B has no effect, and there is no interaction between A and B. The corresponding test statistics are
+
+$$F_{A}=\frac{MS_{A}}{MSE}, \qquad F_{B}=\frac{MS_{B}}{MSE}, \qquad F_{AB}=\frac{MS_{AB}}{MSE}.$$
+
+An effect is considered significant when its $p$-value is less than the chosen level of significance.
+
+# Code and Calculations
+
+## Data and Model
+
+```{r data-and-model}
+# Practical 27: 2^2 Factorial Experiment in CRD
+
+# Enter the data
+A <- factor(rep(c(-1, 1, -1, 1), each = 3))
+B <- factor(rep(c(-1, -1, 1, 1), each = 3))
+
+Yield <- c(20, 17, 19,
+           28, 24, 24,
+           10, 11, 15,
+           23, 22, 21)
+
+# Create data frame
+data <- data.frame(A, B, Yield)
+
+# Fit the factorial model
+model <- aov(Yield ~ A * B, data = data)
+```
+
+## ANOVA Table
+
+```{r anova}
+# ANOVA table
+summary(model)
+```
+
+## Treatment Combination Means
+
+```{r means}
+# Treatment combination means
+aggregate(Yield ~ A + B, data, mean)
+```
+
+## Interaction Plot
+
+```{r interaction-plot}
+# Interaction plot
+interaction.plot(B, A, Yield,
+                 xlab = "Factor B",
+                 ylab = "Mean Yield")
+```
+
+# Results and Conclusion
+
+The ANOVA table obtained from the $2^{2}$ factorial experiment is
+
+| **Source** | **df** | **SS** | **MS** | **F** | **p-value** |
+|-----------|----|--------|--------|--------|----------------------|
+| A         | 1  | 208.33 | 208.33 | 53.191 | $8.44\times10^{-5}$  |
+| B         | 1  | 75.00  | 75.00  | 19.149 | 0.00236 |
+| A:B       | 1  | 8.33   | 8.33   | 2.128  | 0.18278 |
+| Residuals | 8  | 31.33  | 3.92   |        |         |
+| Total     | 11 | 323.00 |        |        |         |
+
+At the 5% level of significance, the $p$-value for factor A is $p_{A}=8.44\times10^{-5}<0.05$, and the $p$-value for factor B is $p_{B}=0.00236<0.05$. Thus, both main effects are significant.
+
+For the interaction effect, $p_{AB}=0.18278>0.05$. Therefore, the interaction between A and B is not significant.
+
+The treatment-combination means are
+
+| **Combination** | **(1)** | **a** | **b** | **ab** |
+|------------|-------|-------|-------|-------|
+| Mean yield | 18.67 | 25.33 | 12.00 | 22.00 |
+
+Hence, factors A and B have significant individual effects on yield, while their interaction is not significant. Factor A increases the mean yield, whereas factor B decreases it on average.

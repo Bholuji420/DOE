@@ -1,0 +1,111 @@
+---
+title: "Practical 23"
+author: "Shivam Kumar"
+date: '25026765012'
+output: html_document
+---
+
+# Aim
+
+To analyze the data on weight gain of 20 chicks subjected to four tropical feeds (A, B, C and D) under a Completely Randomized Design (CRD) using one-way Analysis of Variance (ANOVA), and to calculate the Critical Difference (CD) at the 5% level of significance.
+
+# Problem
+
+The weight gains of the chicks are:
+
+| **Feed** | **1** | **2** | **3** | **4** | **5** |
+|---|-----|-----|----|----|-----|
+| A | 55  | 49  | 42 | 21 | 52  |
+| B | 61  | 112 | 30 | 89 | 63  |
+| C | 42  | 97  | 81 | 95 | 92  |
+| D | 162 | 137 | 169 | 85 | 154 |
+
+# Theory
+
+A Completely Randomized Design (CRD) is an experimental design in which experimental units are randomly assigned to different treatments without forming blocks. In this experiment, 20 chicks are randomly assigned to four feeding treatments, with five chicks receiving each feed.
+
+The data obtained from a CRD can be analyzed using one-way Analysis of Variance (ANOVA). ANOVA partitions the total variation in the observations into variation due to treatments and variation due to random error:
+
+$$SS_{\text{Total}}=SS_{\text{Treatment}}+SS_{\text{Error}}.$$
+
+The statistical linear model for a CRD is
+
+$$Y_{ij}=\mu+\tau_{i}+\epsilon_{ij},$$
+
+where $Y_{ij}$ is the observation from the $j$th experimental unit receiving the $i$th treatment, $\mu$ is the overall mean, $\tau_{i}$ is the effect of the $i$th treatment, and $\epsilon_{ij}$ is the random error.
+
+The null hypothesis is $H_{0}:\mu_{A}=\mu_{B}=\mu_{C}=\mu_{D}$, against the alternative hypothesis that at least one treatment mean differs. The F-statistic is
+
+$$F=\frac{MS_{\text{Treatment}}}{MS_{\text{Error}}}.$$
+
+If the calculated F-value is significant, the treatment means are compared using the Critical Difference (CD). For equal replications,
+
+$$CD=t_{\alpha,\, df_{E}}\sqrt{\frac{2\,MSE}{r}},$$
+
+where $MSE$ is the error mean square, $r$ is the number of replications per treatment, and $t_{\alpha,\, df_{E}}$ is the tabulated t-value at the required level of significance.
+
+# Code and Calculations
+
+## Data and Model
+
+```{r data-and-model}
+# Data
+feed <- factor(rep(c("A", "B", "C", "D"), each = 5))
+
+gain <- c(
+  55, 49, 42, 21, 52,
+  61, 112, 30, 89, 63,
+  42, 97, 81, 95, 92,
+  162, 137, 169, 85, 154
+)
+
+data = data.frame(feed, gain)
+
+model = aov(gain ~ feed, data = data)
+```
+
+## ANOVA Table
+
+```{r anova-table}
+# ANOVA table
+summary(model)
+```
+
+## Treatment Means
+
+```{r treatment-means}
+# Treatment means
+aggregate(gain ~ feed, data = data, mean)
+```
+
+## Critical Difference
+
+```{r critical-difference}
+# Critical Difference
+MSE <- deviance(model) / df.residual(model)
+r <- 5
+t_value <- qt(0.975, df.residual(model))
+
+CD <- t_value * sqrt(2 * MSE / r)
+
+CD
+```
+
+# Results and Conclusion
+
+The one-way ANOVA table is
+
+| **Source** | **df** | **SS** | **MS** | **F** | **p-value** |
+|-----------|----|-------|------|-------|----------|
+| Feed      | 3  | 25430 | 8477 | 12.08 | 0.000221 |
+| Residuals | 16 | 11231 | 702  |       |          |
+
+- The experiment represents a Completely Randomized Design (CRD) with four feed treatments and five replications per treatment.
+
+- The ANOVA gives a calculated F-value of 12.08, which is greater than the tabulated F-value of approximately 3.24 at the 5% level of significance.
+
+- Therefore, the null hypothesis that all four feed means are equal is rejected, indicating that the feeds differ significantly in their effect on chick weight gain.
+
+- The Critical Difference at the 5% level is 35.52. Feeds A and C, A and D, B and D, and C and D differ significantly, while A and B and B and C do not differ significantly.
+
+- Feed D has the highest mean weight gain (141.4), while Feed A has the lowest mean weight gain (43.8). Thus, Feed D produced the highest average weight gain among the four feeds.

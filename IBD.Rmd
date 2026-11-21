@@ -1,0 +1,204 @@
+---
+title: "Practical 22"
+author: "Shivam Kumar"
+date: '25026765012'
+output: html_document
+---
+
+# Aim
+
+To analyse an incomplete block design with four treatments (A, B, C, D) arranged in four blocks of size four (unequal replications) by the intra-block method, and to test the significance of treatments (adjusted for blocks) and of blocks (adjusted for treatments).
+
+# Problem
+
+The treatments allotted to each block and the observed yields are given below (treatment in brackets):
+
+| **Block** | **Plot 1** | **Plot 2** | **Plot 3** | **Plot 4** |
+|---|--------|---------|---------|--------|
+| 1 | (A) 3  | (C) 10  | (A) 4   | (B) 8  |
+| 2 | (B) 8  | (D) 11  | (C) 12  | (B) 8  |
+| 3 | (C) 12 | (A) 7   | (C) 11  | (B) 12 |
+| 4 | (D) 15 | (B) 10  | (A) 7   | (D) 13 |
+
+The incidence matrix $N$ (treatments $\times$ blocks) is
+
+|   | **Block 1** | **Block 2** | **Block 3** | **Block 4** | $r_{i}$ |
+|---|---|---|---|---|---|
+| A | 2 | 0 | 1 | 1 | 4 |
+| B | 1 | 2 | 1 | 1 | 5 |
+| C | 1 | 1 | 2 | 0 | 4 |
+| D | 0 | 1 | 0 | 2 | 3 |
+
+Prepare the ANOVA tables for treatments (adjusted) and blocks (adjusted) and test the significance of each.
+
+# Theory
+
+In an incomplete block design the treatments are not all present in every block and the replications may be unequal, so treatments and blocks are not orthogonal. The model is
+
+$$Y_{ij}=\mu+\tau_{i}+\beta_{j}+\epsilon_{ij}.$$
+
+Let $T$ and $B$ be the vectors of treatment and block totals, $R=\text{diag}(r_{i})$ the replications, $K=\text{diag}(k_{j})$ the block sizes and $N$ the incidence matrix. The adjusted treatment totals and the $C$-matrix are
+
+$$Q=T-NK^{-1}B, \qquad C=R-NK^{-1}N'.$$
+
+The reduced normal equations are $C\hat{\tau}=Q$, solved with a generalised inverse $C^{-}$. The sums of squares are
+
+$$SS_{\text{Block (unadj)}}=\sum_{j}\frac{B_{j}^{2}}{k_{j}}-\frac{G^{2}}{n}, \qquad SS_{\text{Trt (adj)}}=Q'C^{-}Q,$$
+
+$$SSE=TSS-SS_{\text{Block (unadj)}}-SS_{\text{Trt (adj)}}.$$
+
+For testing blocks adjusted for treatments,
+
+$$SS_{\text{Block (adj)}}=TSS-SSE-SS_{\text{Trt (unadj)}}.$$
+
+The error degrees of freedom are $n-t-b+1=16-4-4+1=9$. The $F$-ratios are $MS_{\text{Trt (adj)}}/MSE$ and $MS_{\text{Block (adj)}}/MSE$.
+
+# Code and Calculations
+
+## Data, Incidence Matrix and Totals
+
+```{r data-and-totals}
+library(MASS)
+# Data
+y <- c(3,10,4,8,
+       8,11,12,8,
+       12,7,11,12,
+       15,10,7,13)
+
+treatment <- factor(c("A","C","A","B",
+                      "B","D","C","B",
+                      "C","A","C","B",
+                      "D","B","A","D"))
+
+block <- factor(rep(1:4, each = 4))
+
+# Incidence matrix: Treatment x Block
+N <- matrix(c(
+  2,0,1,1,
+  1,2,1,1,
+  1,1,2,0,
+  0,1,0,2
+), nrow = 4, byrow = TRUE)
+
+# Totals
+T <- as.numeric(tapply(y, treatment, sum))
+B <- as.numeric(tapply(y, block, sum))
+
+# Replications and block sizes
+R <- diag(as.numeric(table(treatment)))
+K <- diag(as.numeric(table(block)))
+```
+
+## Sums of Squares
+
+```{r sums-of-squares}
+# Total SS
+TSS <- sum(y^2) - sum(y)^2/length(y)
+
+# Block SS (unadjusted)
+SS.block <- t(B) %*% solve(K) %*% B -
+  sum(y)^2/length(y)
+
+# Treatment adjusted for blocks
+
+Q <- matrix(T, ncol = 1) -
+  N %*% solve(K) %*% matrix(B, ncol = 1)
+
+Cmat <- R - N %*% solve(K) %*% t(N)
+
+Cinv <- ginv(Cmat)
+
+SS.trt.adj <- as.numeric(t(Q) %*% Cinv %*% Q)
+
+# Error SS
+
+SSE <- TSS - SS.block - SS.trt.adj
+
+# Block adjusted for treatments
+
+T.unadj <- sum(T^2 / diag(R)) - sum(y)^2/length(y)
+
+SS.block.adj <- TSS - SSE - T.unadj
+```
+
+## Mean Squares and F Tests
+
+```{r f-tests}
+# Mean squares and F tests
+
+df.trt <- 4 - 1
+df.block <- 4 - 1
+df.error <- 16 - 4 - 4 + 1
+
+MS.trt <- SS.trt.adj / df.trt
+MS.block <- SS.block.adj / df.block
+MS.error <- SSE / df.error
+
+F.trt <- MS.trt / MS.error
+F.block <- MS.block / MS.error
+
+p.trt <- pf(F.trt, df.trt, df.error, lower.tail = FALSE)
+p.block <- pf(F.block, df.block, df.error, lower.tail = FALSE)
+```
+
+## ANOVA Tables
+
+```{r anova-tables}
+# ANOVA tables
+
+ANOVA_treatment <- data.frame(
+  Source = c("Blocks (unadjusted)",
+             "Treatments (adjusted)",
+             "Error",
+             "Total"),
+  DF = c(df.block, df.trt, df.error, 15),
+  SS = c(SS.block, SS.trt.adj, SSE, TSS)
+)
+
+ANOVA_block <- data.frame(
+  Source = c("Treatments (unadjusted)",
+             "Blocks (adjusted)",
+             "Error",
+             "Total"),
+  DF = c(df.trt, df.block, df.error, 15),
+  SS = c(T.unadj, SS.block.adj, SSE, TSS)
+)
+
+ANOVA_treatment
+
+ANOVA_block
+
+F.trt
+
+p.trt
+
+F.block
+
+p.block
+```
+
+# Results and Conclusion
+
+Treatments adjusted for blocks:
+
+| **Source** | **df** | **SS** | **MS** | **F** | **p-value** |
+|-----------------------|----|---------|--------|--------|----------|
+| Blocks (unadjusted)   | 3  | 58.688  |        |        |          |
+| Treatments (adjusted) | 3  | 87.786  | 29.262 | 22.972 | 0.000149 |
+| Error                 | 9  | 11.464  | 1.274  |        |          |
+| Total                 | 15 | 157.938 |        |        |          |
+
+Blocks adjusted for treatments:
+
+| **Source** | **df** | **SS** | **MS** | **F** | **p-value** |
+|-------------------------|----|---------|-------|-------|---------|
+| Treatments (unadjusted) | 3  | 121.638 |       |       |         |
+| Blocks (adjusted)       | 3  | 24.836  | 8.279 | 6.499 | 0.01245 |
+| Error                   | 9  | 11.464  | 1.274 |       |         |
+| Total                   | 15 | 157.938 |       |       |         |
+
+For treatments, $F=22.972$ with $p=0.000149<0.05$, so the null hypothesis of equal treatment effects is rejected: the treatments differ significantly after adjusting for blocks.
+
+For blocks, $F=6.499$ with $p=0.01245<0.05$, so the block effect adjusted for treatments is also significant.
+
+Hence, both treatment and block effects are significant at the 5% level.

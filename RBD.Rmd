@@ -1,0 +1,114 @@
+---
+title: "Practical 21"
+author: "Shivam Kumar"
+date: '25026765012'
+output: html_document
+---
+
+# Aim
+
+To analyze the data from a Randomized Block Design (RBD) and examine whether the six test units differ significantly in their mean response.
+
+# Problem
+
+Six test units are tested in five replicate runs. The observed times (in seconds) are given below:
+
+|       | **Unit 1** | **Unit 2** | **Unit 3** | **Unit 4** | **Unit 5** | **Unit 6** |
+|-------|------|------|------|------|------|------|
+| Run 1 | 52.9 | 54.0 | 52.6 | 50.5 | 54.6 | 54.0 |
+| Run 2 | 52.3 | 53.8 | 53.2 | 50.8 | 54.6 | 53.3 |
+| Run 3 | 52.2 | 53.8 | 53.4 | 50.7 | 54.4 | 53.7 |
+| Run 4 | 52.5 | 53.6 | 53.4 | 50.8 | 54.4 | 53.5 |
+| Run 5 | 52.7 | 53.6 | 53.0 | 50.5 | 54.4 | 53.7 |
+
+Analyze the data and make an ANOVA table. Conclude whether the six test units differ significantly. Also find the critical difference.
+
+# Theory
+
+In a Randomized Block Design, the experimental units are divided into homogeneous blocks and each treatment is observed once within every block. Here, the six test units are the treatments and the five replicate runs are the blocks.
+
+The RBD model is
+
+$$Y_{ij}=\mu+\tau_{i}+\beta_{j}+\epsilon_{ij},$$
+
+where $\mu$ is the overall mean, $\tau_{i}$ is the effect of the $i$th unit, $\beta_{j}$ is the effect of the $j$th run, and $\epsilon_{ij}$ is the random error.
+
+The hypotheses for testing the unit effects are
+
+$$H_{0}:\mu_{1}=\mu_{2}=\cdots=\mu_{6} \quad \text{against} \quad H_{1}:\text{at least two unit means are different.}$$
+
+The test statistic is
+
+$$F=\frac{MS_{\text{Unit}}}{MSE},$$
+
+where $MS_{\text{Unit}}$ is the mean square due to units and $MSE$ is the residual mean square. The null hypothesis is rejected when the $p$-value is less than the chosen level of significance.
+
+The critical difference (CD) at the 5% level, with $r=5$ replications per unit, is
+
+$$CD=t_{0.025,\, df_{E}}\sqrt{\frac{2\,MSE}{r}}.$$
+
+Two unit means differ significantly if their absolute difference exceeds the CD.
+
+# Code and Calculations
+
+## Data
+
+```{r data-entry}
+# Data
+y <- matrix(c(
+  52.9,54.0,52.6,50.5,54.6,54.0,
+  52.3,53.8,53.2,50.8,54.6,53.3,
+  52.2,53.8,53.4,50.7,54.4,53.7,
+  52.5,53.6,53.4,50.8,54.4,53.5,
+  52.7,53.6,53.0,50.5,54.4,53.7
+), 5, 6, byrow=TRUE)
+
+# Convert to data frame
+data <- data.frame(
+  Run = factor(rep(1:5, each=6)),
+  Unit = factor(rep(1:6, times=5)),
+  Time = as.vector(t(y))
+)
+```
+
+## ANOVA
+
+```{r anova}
+# ANOVA
+model <- aov(Time ~ Unit + Run, data=data)
+summary(model)
+```
+
+## Critical Difference
+
+```{r critical-difference}
+# Critical Difference at 5% level
+MSE <- deviance(model) / df.residual(model)
+CD <- qt(0.975, df.residual(model)) * sqrt(2*MSE/5)
+
+CD
+```
+
+# Results and Conclusion
+
+The ANOVA table obtained from the Randomized Block Design is
+
+| **Source** | **df** | **SS** | **MS** | **F** | **p-value** |
+|-----------|----|-------|-------|---------|------------------|
+| Unit      | 5  | 44.46 | 8.893 | 142.054 | $6.48\times10^{-15}$ |
+| Run       | 4  | 0.05  | 0.012 | 0.192   | 0.94 |
+| Residuals | 20 | 1.25  | 0.063 |         |      |
+
+For the test of equality of the six unit means, $p=6.48\times10^{-15}<0.05$. Therefore, the null hypothesis is rejected at the 5% level of significance. Hence, there is a significant difference among the mean responses of the six test units.
+
+For the block effect, $p=0.94>0.05$. Thus, there is no significant difference among the five replicate runs.
+
+**Critical difference.** From the output, $CD=0.3301$ at the 5% level. The unit means are
+
+| **Unit** | **1** | **2** | **3** | **4** | **5** | **6** |
+|---------------|-------|-------|-------|-------|-------|-------|
+| Mean time (s) | 52.52 | 53.76 | 53.12 | 50.66 | 54.48 | 53.64 |
+
+Every pair of units differs by more than 0.3301 except Units 2 and 6 (difference $=0.12$). So all units differ significantly from one another except Unit 2 and Unit 6. Unit 5 has the largest mean time (54.48 s) and Unit 4 the smallest (50.66 s).
+
+Hence, the six test units differ significantly, while the effect of the replicate runs is not significant.
